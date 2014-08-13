@@ -23,7 +23,7 @@ using namespace std;
 class StopLight {
 
 	public:
-		StopLight(const string&, const vector<float>&, const vector<float>&, const vector<pair<string,vector<string> > >&);
+		StopLight(const string&, const vector<float>&, const vector<float>&, vector<pair<string,vector<string> > >);
 			// string homolog group ID
 			// position #
 			// p-values
@@ -57,9 +57,10 @@ class StopLight {
 			// Sets pvalue vector by parsing string of values
 		void set_MM_map(const vector<pair<string, vector<string> > >&);
 			// creates map of seqID & its %Min-Max sequence
-		void create_StopLight_map(const map<string, vector<float> >&);
+		void create_StopLight_map(map<string, vector<float> >&, const map<string, vector<pair<int,int> > >&);
 			// Creates parallel mapping of %MM & stoplight values
-		
+		void create_StopLight_regions(map<string, vector<float> >&);
+			// breaks up sequences into regions for T-Test
 };
 
 #endif

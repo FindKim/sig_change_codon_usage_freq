@@ -11,23 +11,44 @@
 #include "TTest.h"
 #include <vector>
 #include <math.h>
-#include <utility> // pair
+#include <cmath>		// abs
+#include <utility> 	// pair
+#include <iostream> 
 
 // Calculate T-Test
-TTest :: TTest(const vector<float>& mm_seq, pair<int, int>& region1, pair<int, int>& region2) {
+TTest :: TTest(const vector<float>& mm_seq, const pair<int, int>& region1, const pair<int, int>& region2) {
 
-	region1_len = region1.second - region1.first;
-	region2_len = region2.second - region2.first;
+//	cout << "Region A: " << region1.first << "," << region1.second << endl;
+//	cout << "Region B: " << region2.first << "," << region2.second << endl;
+
+	region1_len = region1.second - region1.first +1;
+	region2_len = region2.second - region2.first +1;
 	
+//	cout << "N\t" << region1_len << " " << region2_len << endl;
 	region1_avg = calc_region_mm_avg(mm_seq, region1.first, region2.second);
 	region2_avg = calc_region_mm_avg(mm_seq, region2.first, region2.second);
 	
+//	cout << "avg\t" << region1_avg << " " << region2_avg << endl;
 	region1_var = calc_region_var(mm_seq, region1.first, region1.second, region1_avg);
 	region2_var = calc_region_var(mm_seq, region2.first, region2.second, region2_avg);
 	
-	df = (region1_var, region1_len, region2_var, region2_len);
+//	cout << "var\t" << region1_var << " " << region2_var << endl;
+	df = calc_df(region1_var, region1_len, region2_var, region2_len);
 	t = calc_t(region1_avg, region1_var, region1_len, region2_avg, region2_var, region2_len);
 	sig = calc_significance(t, df);
+}
+
+float TTest :: get_avg1() {
+	return region1_avg;
+}
+float TTest :: get_avg2() {
+	return region2_avg;
+}
+
+// Returns greater average to determine slow down or increase
+int TTest :: greater() {
+	if (get_avg1() > get_avg2()) return 1;
+	else return 2;
 }
 
 
@@ -63,14 +84,18 @@ float TTest :: calc_region_var(const vector<float>& mm_seq, const int& begin, co
 }
 // Calculates degrees of freedom
 float TTest :: calc_df(const float& var1, const float& n1, const float& var2, const float& n2) {
-	float numerator = pow( pow(var1,2)/n1 + pow(var2,2)/n2, 2);
-	float denominator = pow(var1,4)/(pow(var1,2)*(var1-1)) + pow(var2,4)/(pow(var2,2)*(var2-1));
+	float numerator = pow( var1/n1 + var2/n2, 2);
+	float denominator = pow(var1,2)/(pow(n1,2)*(n1-1)) + pow(var2,2)/(pow(n2,2)*(n2-1));
+//	cout << "DF = " << numerator/denominator << endl;
 	return numerator/denominator;
 }
 // Calculates statistic t
 float TTest :: calc_t(const float& avg1, const float& var1, const float& n1, const float& avg2, const float& var2, const float& n2) {
-	float numerator = avg1 - avg2;
-	float denominator = pow(( pow(var1,2)/n1 + pow(var2,2)/n2 ), 0.5);
+	float numerator = abs(avg1 - avg2);
+	float denominator = pow( (var1/n1 + var2/n2), 0.5);
+//	cout << avg1 << "," << var1 << "," << n1 << endl;
+//	cout << avg2 << "," << var2 << "," << n2 << endl;
+	cout << "T = " << numerator << "/" << denominator << " = " << numerator/denominator << endl;
 	return numerator/denominator;
 }
 
@@ -82,7 +107,7 @@ bool TTest :: significant() {
 // Returns true of significantly different
 bool TTest :: calc_significance(float& t, float& df) {
 
-	int degrees = df + 0.5;
+	int degrees = ceil(df);
 	if (degrees > 30) {
 		if (degrees > 30 && degrees <= 40) {
 			degrees = 40;
@@ -94,7 +119,9 @@ bool TTest :: calc_significance(float& t, float& df) {
 			degrees = 100;
 		} else degrees = 1000;
 	}
-	
+	if (isnan(df)) return false;
+//	cout << df << "->" << degrees << endl;
+
 	switch(degrees) {
 		case 1:
 			if (t > 12.71) return true;

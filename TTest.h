@@ -20,11 +20,14 @@ using namespace std;
 class TTest {
 
 	public:
-		TTest(const vector<float>&, pair<int, int>&, pair<int, int>&);
+		TTest(const vector<float>&, const pair<int, int>&, const pair<int, int>&);
 			// vector of mm values
 			// begin & end for region 1 & region 2
 		bool significant();
 			// Returns significance
+		int greater();
+			// Returns which average is greater
+			// 1 for first, 2 for seond
 			
 	private:
 		float region1_len;
@@ -37,6 +40,8 @@ class TTest {
 		float t;
 		bool sig;
 		
+		float get_avg1();
+		float get_avg2();
 		bool calc_significance(float&, float&);
 			// t & df
 			// Returns true if significant difference with confidence of 95%
