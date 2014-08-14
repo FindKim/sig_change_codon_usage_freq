@@ -95,7 +95,7 @@ float TTest :: calc_t(const float& avg1, const float& var1, const float& n1, con
 	float denominator = pow( (var1/n1 + var2/n2), 0.5);
 //	cout << avg1 << "," << var1 << "," << n1 << endl;
 //	cout << avg2 << "," << var2 << "," << n2 << endl;
-	cout << "T = " << numerator << "/" << denominator << " = " << numerator/denominator << endl;
+//	cout << "T = " << numerator << "/" << denominator << " = " << numerator/denominator << endl;
 	return numerator/denominator;
 }
 

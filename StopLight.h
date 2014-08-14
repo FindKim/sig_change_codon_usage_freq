@@ -28,7 +28,8 @@ class StopLight {
 			// position #
 			// p-values
 			// seqID, gapped-aligned %Min-Max sequence
-			
+		void print_StopLight();
+			// Prints stoplight values for each orf in homolog group
 		void create_output_file(const string&);
 			// Creates output file with all seqID, gapped-aligned %Min-Max sequence, and stoplight sequence for homolog group
 			// In columns

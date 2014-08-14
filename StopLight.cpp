@@ -14,6 +14,7 @@
 #include "TTest.h"
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <utility>
@@ -32,15 +33,44 @@ StopLight :: StopLight (const string& homologID, const vector<float>& pos, const
 	set_pvalue(pv);
 	set_MM_map(seqs);
 	create_StopLight_regions(MM);
+	print_StopLight();
+	string ofile = homologID + ".sl";
+	//"/afs/crc.nd.edu/user/k/kngo/sig_change_codon_usage_freq/" + homologID + ".sl";
+	create_output_file(ofile);
 }
 
 // Creates output file with all seqID, gapped-aligned %Min-Max sequence, and stoplight sequence for homolog group
 // In columns
 void StopLight :: create_output_file(const string& filename) {
+	cout << filename << endl;
+	ofstream file;
+	file.open (filename.c_str());
+	
+	if (file.is_open()) {
+		cout << "In here" << endl;
+		map<string, vector<int> >::const_iterator orf = SL.begin();
+		for(orf; orf != SL.end(); ++orf) {
+			file << orf->first;
+			if (orf != --SL.end()) file << ",";
+			else file << endl;
+		}
+		
+		int longest = 0;
+		for (orf = SL.begin(); orf != SL.end(); ++orf) {
+			if (longest < orf->second.size()) longest = orf->second.size();
+		}
+		
+		for (int i = 0; i < longest; i++) {
+			for (orf = SL.begin(); orf != SL.end(); ++orf) {
+				if (i < orf->second.size()) file << orf->second[i];
 
+				if (orf != --SL.end()) file << ",";
+				else file << endl;
+			}
+		}
+	}
+	file.close();
 }
-
-
 
 void StopLight :: set_groupID(const string& ID) {
 	groupID = ID;
@@ -105,6 +135,18 @@ map<string, vector<float> > StopLight :: get_MM() {
 map<string, vector<int> > StopLight :: get_SL() {
 	return SL;
 }
+void StopLight :: print_StopLight() {
+	map<string, vector<int> >::const_iterator orf = SL.begin();
+	for(orf; orf != SL.end(); ++orf) {
+	
+		cout << orf->first << endl;
+		vector<int>::const_iterator it = orf->second.begin();
+		for (it; it != orf->second.end(); ++it) {
+			cout << *it << " ";
+		}
+		cout << endl << endl;
+	}
+}
 void StopLight :: create_StopLight_map(map<string, vector<float> >& seqs, const map<string, vector<pair<int,int> > >& stoplight_regions_homolog) {
 
 	map<string, vector<int> > stoplight_map;
@@ -121,24 +163,31 @@ void StopLight :: create_StopLight_map(map<string, vector<float> >& seqs, const 
 		for (region; region+1 != orf->second.end(); ++region) {
 			
 			TTest check_sig(current_mm_seq, *region, *(region+1));
+			
+			cout << current_mm_seq[(region+1)->first] << " ";
 
 			// Rare codon cluster
 			if (current_mm_seq[(region+1)->first] < 0) {
-				for (int i = (region+1)->first; i < (region+1)->second; i++)
-					stoplight_seq[i] = -2;
+				cout << "Stop" << endl;
+				for (int i = (region+1)->first; i < (region+1)->second; i++) {
+					if (current_mm_seq[i] < 0)	// Negative values automatically red
+						stoplight_seq[i] = -2;
+					else stoplight_seq[i] = -1;	// Positive values yellow
+				}
 
 			// Not rare codon cluster, but significant
-			} else if (check_sig.significant()) {
+			} else {//if (check_sig.significant()) {
 				
 				// First region is greater
 				if (check_sig.greater() == 1) {
-						
+					cout << "Slow" << endl;
 					for (int i = (region+1)->first; i < (region+1)->second; i++) {
-						stoplight_seq[i] = -1;	
+						stoplight_seq[i] = -1;
 					}
 				
 				// First region is less
 				} else {
+					cout << "Fast" << endl;
 					for (int i = (region+1)->first; i < (region+1)->second; i++) {
 						stoplight_seq[i] = 1;
 					}
@@ -154,7 +203,7 @@ void StopLight :: create_StopLight_map(map<string, vector<float> >& seqs, const 
 
 
 
-// Creates parallel mapping of %MM & stoplight values
+// Partitions %MM sequence in to regions for stoplight
 void StopLight :: create_StopLight_regions(map<string, vector<float> >& seqs) {
 	map<string, vector<pair<int,int> > > stoplight_regions_homolog;
 	
@@ -182,7 +231,7 @@ void StopLight :: create_StopLight_regions(map<string, vector<float> >& seqs) {
 			// IF FIRST REGION
 			if (first_region) {
 				start = i;
-				cout << "FIRST REGION" << endl;
+//				cout << "FIRST REGION" << endl;
 				
 				// First region begins with rare codon cluster
 				if (mm[i] < 0) {
@@ -210,21 +259,33 @@ void StopLight :: create_StopLight_regions(map<string, vector<float> >& seqs) {
 					}
 					
 					end = i;
-					cout << mm[start] << ", " << mm[end] << endl;
-					cout << "First rare codon cluster: " << start << ", " << end << endl;
+//					cout << mm[start] << ", " << mm[end] << endl;
+//					cout << "First rare codon cluster: " << start << ", " << end << endl;
 				
 				// First region not a rcc -- find highest local peak
 				} else {
-					highest_local_mm = i;
 					int j = 0;
-					for (int k = 0; j+k < 10; j++) {	// 10 b/c of rcclust length
-						if (j+i > mm.size()) break;			// Out of bounds
-						else if (isnan(mm[j+i])) k--;		// Counter balances j so only iterate over 10 windows that aren't gaps
-						else if (mm[highest_local_mm] < mm[j+i]) highest_local_mm = j+i;
+					bool cluster = true;
+					highest_local_mm = i;
+					while (cluster) {
+						bool same_cluster = false;
+						for (int k = 0; j+k < 10; j++) {	// 10 b/c of rcclust length
+							if (i+j > mm.size()) break;			// Out of bounds
+							else if (isnan(mm[i+j])) k--;		// Counter balances j so only iterate over 10 windows that aren't gaps
+							else if (mm[highest_local_mm] < mm[i+j]) {
+								highest_local_mm = i+j;
+								same_cluster = true;
+//								cout << "highest local mm " << mm[i+j] << endl;
+							}
+//							cout << i+j << ") " << mm[i+j] << endl;
+						}
+						if (same_cluster) i = highest_local_mm;
+						else cluster = false;
+						i++;
 					}
 					end = highest_local_mm;
 					i = end;	// Moves iterator to end of region
-					cout << "First region: " << start << ", " << end << endl;
+//					cout << "First region: " << start << ", " << end << endl;
 				}
 				
 				regionB = make_pair (start,end);	// Will swap to A for convention
@@ -237,7 +298,7 @@ void StopLight :: create_StopLight_regions(map<string, vector<float> >& seqs) {
 			// NOT FIRST REGION
 			} else {
 				if (isnan(mm[i])) continue;
-				cout << "ANOTHER REGION" << endl;
+//				cout << "ANOTHER REGION" << endl;
 				
 				regionA = regionB;	// B -> A, find new B
 				start = i;
@@ -249,19 +310,19 @@ void StopLight :: create_StopLight_regions(map<string, vector<float> >& seqs) {
 						else break;
 					}
 					end = i;
-					cout << start << ", " << end << endl;
 
 					pair<int,int> temp_region = make_pair (start, end);
 					TTest check_sig (mm, regionA, temp_region);
 					bool sig = check_sig.significant();
-					cout << "Is it sig? " << sig << endl;
+//					cout << "Is it sig? " << sig << endl;
 					while (sig) {
 						temp_region.second++;
+						if (isnan(mm[temp_region.second])) continue;
 						TTest check_next_sig (mm, regionA, temp_region);
 						sig = check_next_sig.significant();
-						cout << "Is next one sig? " << sig << endl;
+//						cout << "Is next one sig? " << sig << endl;
 					}
-					cout << "Consecutive rcclust: " << temp_region.first << ", " << temp_region.second-1 << endl;
+//					cout << "Consecutive rcclust: " << temp_region.first << ", " << temp_region.second-1 << endl;
 					end = temp_region.second -1;	// Moves interator to end of temp_region (-1 because last one made it not signficant)
 					i = end;
 
@@ -273,14 +334,14 @@ void StopLight :: create_StopLight_regions(map<string, vector<float> >& seqs) {
 					while (cluster) {
 						bool same_cluster = false;
 						for (int k = 0; j+k < 10; j++) {	// 10 b/c of rcclust length
-							cout << i+j << ") " << mm[i+j] << endl;
 							if (i+j > mm.size()) break;			// Out of bounds
 							else if (isnan(mm[i+j])) k--;		// Counter balances j so only iterate over 10 windows that aren't gaps
 							else if (mm[highest_local_mm] < mm[i+j]) {
 								highest_local_mm = i+j;
 								same_cluster = true;
-								cout << "highest local mm " << mm[i+j] << endl;
+//								cout << "highest local mm " << mm[i+j] << endl;
 							}
+//							cout << i+j << ") " << mm[i+j] << endl;
 						}
 						if (same_cluster) i = highest_local_mm;
 						else cluster = false;
@@ -292,22 +353,26 @@ void StopLight :: create_StopLight_regions(map<string, vector<float> >& seqs) {
 				}
 
 				regionB = make_pair (start,end);
+/*
 				cout << "Region A: " << regionA.first << "," << regionA.second << endl << "\t";
 				for (int n = regionA.first; n <= regionA.second; n++) cout << mm[n] << " ";
 				cout << endl;
 				cout << "Region B: " << regionB.first << "," << regionB.second << endl << "\t";
 				for (int n = regionB.first; n <= regionB.second; n++) cout << mm[n] << " ";
 				cout << endl;
+*/
 				TTest check_sig (mm, regionA, regionB);
 				bool sig = check_sig.significant();
+
 				if (sig) stoplight_regions.push_back (regionB);
+
 				else {
-					cout << "MERGING PREVIOUS REGION" << endl;
-					cout << regionA.first << "," << regionA.second << "\t" << regionB.first << "," << regionB.second << endl;
 					regionB.first = regionA.first;	// regionB takes start of prev region
 					vector<pair<int, int> >::iterator prev_region = stoplight_regions.end()-1;
 					prev_region->second = regionB.second;	// Replace previous region with extended region
-					cout << "Merged to: " << prev_region->first << "," << prev_region->second << endl;
+//					cout << "MERGING PREVIOUS REGION" << endl;
+//					cout << regionA.first << "," << regionA.second << "\t" << regionB.first << "," << regionB.second << endl;
+//					cout << "Merged to: " << prev_region->first << "," << prev_region->second << endl;
 				}
 			}
 		}

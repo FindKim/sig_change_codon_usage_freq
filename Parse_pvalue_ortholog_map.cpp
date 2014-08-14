@@ -32,8 +32,9 @@ Parse_pvalue_ortholog_map :: Parse_pvalue_ortholog_map (const string& filename) 
 
 // Sets groupID by stripping filename
 void Parse_pvalue_ortholog_map :: set_groupID(const string& filename) {
-	int id_len = filename.size() - FILE_BEGIN.size() - FILE_END.size();
-	string ID = filename.substr(FILE_BEGIN.size(), id_len);
+	
+	string ID = filename.substr(filename.find_last_of("/")+1);
+	ID = ID.erase (ID.find_first_of("."), ID.size());
 	groupID = ID;
 }
 // Returns group ID number

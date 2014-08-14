@@ -119,7 +119,6 @@ int main() {
 		co_occ_files = traverse_directory(directory);
 		cout << "Computing Stop Light values at ";
 		timestamp();
-		cout << endl;
 
 		// Iterates through each file
 		vector<string>::iterator file_it = co_occ_files.begin();
@@ -136,7 +135,6 @@ int main() {
 	}
 	cout << "Finished computing Stop Light values at ";
 	timestamp();
-	cout << endl;
 }
 
 
